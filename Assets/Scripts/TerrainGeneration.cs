@@ -19,6 +19,9 @@ public class TerrainGeneration
 
     List<Bloc> definitions;
 
+    float baseHeight = 12;
+    float maxHeight = 40;
+
     public TerrainGeneration(List<Bloc> blocsDefinition)
     {
         definitions = blocsDefinition;
@@ -63,10 +66,59 @@ public class TerrainGeneration
         //return chunk;
 
         // TEST 2
-        if (y <= MapUtils.GenerateHeight(x, z))
-            chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[2].id);
+        if(y < baseHeight)
+        {
+            float totalDensity = 0;
+            float frequency = 0.05f;
+            float amplitude = 0.05f;
+            float maxValue = 0;
+            int octaves = 4;
+            float persistence = .5f;
+
+            for (int i = 0; i < octaves; i++)
+            {
+                totalDensity += Noise.Generate(x * frequency, y * frequency, z * frequency) * amplitude;
+
+                maxValue += amplitude;
+
+                amplitude *= persistence;
+                frequency *= 2f;
+            }
+
+            var density = totalDensity / maxValue;
+
+            if (density >= 0)
+                chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[1].id);
+            else
+                chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[0].id);
+        }
         else
-            chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[0].id);
+        {
+            float totalHeight = 0;
+            float frequency = 0.005f;
+            float amplitude = 0.004f;
+            float maxValue = 0;
+            int octaves = 6;
+            float persistence = 0.5f;
+
+            for (int i = 0; i < octaves; i++)
+            {
+                totalHeight += Noise.Generate((x + 64) * frequency, (z + 64) * frequency) * amplitude;
+
+                maxValue += amplitude;
+
+                amplitude *= persistence;
+                frequency *= 2f;
+            }
+
+            var height = Mathf.Abs((totalHeight / maxValue)) * maxHeight;
+
+            if (y < height + baseHeight)
+                chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[2].id);
+            else
+                chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, definitions[0].id);
+        }
+        
 
         return chunk;
     }
