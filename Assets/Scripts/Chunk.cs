@@ -8,8 +8,10 @@ public class Chunk : MonoBehaviour
     public static int ChunkSize = 16;
     public bool update = true;
     public World world;
-    public Vector3Int pos;
-
+    public Vector3 pos;
+    public Vector3Int normalizedPosition;
+    public int sizeInBlocs;
+    public float blocSize;
     public bool UseRenderForCollision = true;
 
     public byte[,,] blocs = new byte[ChunkSize, ChunkSize, ChunkSize];
@@ -38,7 +40,7 @@ public class Chunk : MonoBehaviour
         if (InRange(x) && InRange(y) && InRange(z))
             return world.BlocsDefinition[blocs[x, y, z]].id;
 
-        return world.GetBloc(pos.x + x, pos.y + y, pos.z + z);
+        return world.GetBloc(pos.x + x * blocSize, pos.y + y * blocSize, pos.z + z * blocSize);
     }
 
     public void SetBloc(int x, int y, int z, byte bloc)
@@ -49,13 +51,13 @@ public class Chunk : MonoBehaviour
         }
         else
         {
-            world.SetBloc(pos.x + x, pos.y + y, pos.z + z, bloc);
+            world.SetBloc(pos.x + x * blocSize, pos.y + y * blocSize, pos.z + z * blocSize, bloc);
         }
     }
 
-    public static bool InRange(int index)
+    public bool InRange(int index)
     {
-        if (index < 0 || index >= ChunkSize)
+        if (index < 0 || index >= sizeInBlocs)
             return false;
 
         return true;
@@ -65,11 +67,11 @@ public class Chunk : MonoBehaviour
     {
         MeshData data = new MeshData();
 
-        for (int x = 0; x < ChunkSize; x++)
-            for (int y = 0; y < ChunkSize; y++)
-                for (int z = 0; z < ChunkSize; z++)
+        for (int x = 0; x < sizeInBlocs; x++)
+            for (int y = 0; y < sizeInBlocs; y++)
+                for (int z = 0; z < sizeInBlocs; z++)
                 {
-                    data = world.BlocsDefinition[blocs[x, y, z]].FillData(this, x, y, z, data, world.BlocsDefinition);
+                    data = world.BlocsDefinition[blocs[x, y, z]].FillData(this, x, y, z, data, world.BlocsDefinition, pos, blocSize);
                 }
 
         RenderMesh(data);

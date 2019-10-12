@@ -108,4 +108,7 @@ MonoBehaviour:
   update: 1
   world: {fileID: 0}
   pos: {x: 0, y: 0, z: 0}
+  normalizedPosition: {x: 0, y: 0, z: 0}
+  sizeInBlocs: 0
+  blocSize: 0
   UseRenderForCollision: 1

@@ -27,15 +27,15 @@ public class Modify : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.C))
         {
-            if (world == null)
-                return;
+            //if (world == null)
+            //    return;
 
-            for (int x = -2; x < 2; x++)
-                for (int y = -1; y < 1; y++)
-                    for (int z = -1; z < 1; z++)
-                    {
-                        world.CreateChunk(x * 16, y * 16, z * 16);
-                    }
+            //for (int x = -2; x < 2; x++)
+            //    for (int y = -1; y < 1; y++)
+            //        for (int z = -1; z < 1; z++)
+            //        {
+            //            world.CreateChunk(x * 16, y * 16, z * 16);
+            //        }
         }
 
         if (Input.GetKeyDown(KeyCode.V))

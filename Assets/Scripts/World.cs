@@ -12,54 +12,113 @@ public class World : MonoBehaviour
 
     public List<Bloc> BlocsDefinition = new List<Bloc>();
 
+    public Vector3 CenterPosition = new Vector3(512,0,512);
+    public Vector2Int VerticalRenderDistance = new Vector2Int(-1, 3);
+    public Vector2Int HorizontalRenderDistance = new Vector2Int(-4, 4);
+
+    public int ChunkDimensionInBloc = 16;
+    public float BlocSize = 0.5f;
+
+    public GameObject Player;
+
     private void Start()
     {
-        for (int x = -4; x < 4; x++)
-            for (int y = -1; y < 3; y++)
-                for (int z = -4; z < 4; z++)
-                {
-                    CreateChunk(x * 16, y * 16, z * 16);
-                }
-    }
-    public void CreateChunk(int x, int y, int z)
-    {
-        Vector3Int worldPos = new Vector3Int(x, y, z);
+        //for (int x = -4; x < 4; x++)
+        //    for (int y = -1; y < 3; y++)
+        //        for (int z = -4; z < 4; z++)
+        //        {
+        //            CreateChunk(x * (Chunk.ChunkSize * Bloc.BlocSize / 2f), y * (Chunk.ChunkSize * Bloc.BlocSize / 2f), z * (Chunk.ChunkSize * Bloc.BlocSize / 2f));
+        //        }
 
-        var chunkObject = Instantiate(ChunkPrefab, new Vector3(x, y, z), Quaternion.Euler(Vector3.zero), transform) as GameObject;
+        CreateWorldFromPosition();
+    }
+
+    public void CreateWorldFromPosition()
+    {
+        CenterPosition = new Vector3(Player.transform.position.x, 0, Player.transform.position.z);
+
+        Vector3Int CurrentChunkPosition = new Vector3Int(Mathf.FloorToInt(CenterPosition.x / (ChunkDimensionInBloc * BlocSize)), Mathf.FloorToInt(CenterPosition.y / (ChunkDimensionInBloc * BlocSize)), Mathf.FloorToInt(CenterPosition.z / (ChunkDimensionInBloc * BlocSize)));
+
+        for (int x = CurrentChunkPosition.x + HorizontalRenderDistance.x; x < CurrentChunkPosition.x + HorizontalRenderDistance.y; x++)
+            for (int y = CurrentChunkPosition.y + VerticalRenderDistance.x; y < CurrentChunkPosition.y + VerticalRenderDistance.y; y++)
+                for (int z = CurrentChunkPosition.z + HorizontalRenderDistance.x; z < CurrentChunkPosition.z + HorizontalRenderDistance.y; z++)
+                {
+                    CreateChunk(x, y, z, CurrentChunkPosition);
+                }
+
+        //var player = Instantiate(PlayerPrefab, new Vector3()
+        Player.GetComponent<Rigidbody>().isKinematic = false;
+    }
+
+    public void CreateChunk(int x, int y, int z, Vector3Int referenceChunkPosition)
+    {
+        float chunkWorldDimension = ChunkDimensionInBloc * BlocSize;
+
+        Vector3 worldPos = new Vector3(
+            x * chunkWorldDimension,
+            y * chunkWorldDimension,
+            z * chunkWorldDimension
+        );
+
+        Vector3Int worldPosNormalized = new Vector3Int(x, y, z);
+
+        var chunkObject = Instantiate(ChunkPrefab, Vector3.zero, Quaternion.Euler(Vector3.zero)) as GameObject;
 
         Chunk newChunk = chunkObject.GetComponent<Chunk>();
 
+        newChunk.transform.parent = transform;
+
         newChunk.pos = worldPos;
+        newChunk.normalizedPosition = worldPosNormalized;
+
         newChunk.world = this;
         newChunk.name = $"{worldPos.x}_{worldPos.y}_{worldPos.z}";
+        newChunk.sizeInBlocs = ChunkDimensionInBloc;
+        newChunk.blocSize = BlocSize;
 
-        chunks.Add(worldPos, newChunk);
+        chunks.Add(worldPosNormalized, newChunk);
 
-        bool loaded = Serialization.Load(newChunk);
+        //bool loaded = Serialization.Load(newChunk);
 
-        if (loaded)
-            return;
+        //if (loaded)
+        //    return;
 
-        var terrainGenerationMethod = new TerrainGeneration(BlocsDefinition);
+        var terrainGenerationMethod = new TerrainGeneration(BlocsDefinition, ChunkDimensionInBloc, BlocSize);
         newChunk = terrainGenerationMethod.GenerateChunk3D(newChunk);
 
     }
 
 
 
-    public Chunk GetChunk(int x, int y, int z)
+    public Chunk GetChunk(float x, float y, float z)
     {
-        Vector3Int pos = new Vector3Int();
-        float multiple = Chunk.ChunkSize;
-        pos.x = Mathf.FloorToInt(x / multiple) * Chunk.ChunkSize;
-        pos.y = Mathf.FloorToInt(y / multiple) * Chunk.ChunkSize;
-        pos.z = Mathf.FloorToInt(z / multiple) * Chunk.ChunkSize;
+        Vector3Int pos = new Vector3Int(
+            (int)(x / (ChunkDimensionInBloc * BlocSize)),
+            (int)(y / (ChunkDimensionInBloc * BlocSize)),
+            (int)(z / (ChunkDimensionInBloc * BlocSize))
+        );
 
         Chunk containerChunk = null;
+
         chunks.TryGetValue(pos, out containerChunk);
         return containerChunk;
     }
 
+    public Chunk GetChunkFromNormalizedPosition(Vector3Int position)
+    {
+        Chunk containerChunk = null;
+        chunks.TryGetValue(position, out containerChunk);
+        return containerChunk;
+    }
+
+    public static float Truncate(float value, int digits)
+    {
+        double mult = Math.Pow(10.0, digits);
+        double result = Math.Truncate(mult * value) / mult;
+        return (float)result;
+    }
+
+    // TODO : ADAPT TO FLOAT
     public void Destroy(int x, int y, int z)
     {
         Chunk chunk = null;
@@ -82,15 +141,15 @@ public class World : MonoBehaviour
         }
     }
 
-    public byte GetBloc(int x, int y, int z)
+    public byte GetBloc(float x, float y, float z)
     {
         Chunk containerChunk = GetChunk(x, y, z);
         if (containerChunk != null)
         {
             byte bloc = containerChunk.GetBlock(
-                x - containerChunk.pos.x,
-                y - containerChunk.pos.y,
-                z - containerChunk.pos.z
+                Mathf.FloorToInt(Mathf.Abs(x - containerChunk.pos.x) / BlocSize),
+                Mathf.FloorToInt(Mathf.Abs(y - containerChunk.pos.y) / BlocSize),
+                Mathf.FloorToInt(Mathf.Abs(z - containerChunk.pos.z) / BlocSize)
             );
 
             return bloc;
@@ -101,29 +160,35 @@ public class World : MonoBehaviour
         }
     }
 
-    public void SetBloc(int x, int y, int z, byte bloc)
+    public void SetBloc(float x, float y, float z, byte bloc)
     {
         Chunk chunk = GetChunk(x, y, z);
 
         if (chunk != null)
         {
-            chunk.SetBloc(x - chunk.pos.x, y - chunk.pos.y, z - chunk.pos.z, bloc);
+            chunk.SetBloc(
+                Mathf.FloorToInt((x - chunk.pos.x) * ChunkDimensionInBloc),
+                Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc),
+                Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc),
+                bloc
+            );
+
             chunk.update = true;
 
-            UpdateIfEqual(x - chunk.pos.x, 0, new Vector3Int(x - 1, y, z));
-            UpdateIfEqual(x - chunk.pos.x, Chunk.ChunkSize - 1, new Vector3Int(x + 1, y, z));
-            UpdateIfEqual(x - chunk.pos.y, 0, new Vector3Int(x, y - 1, z));
-            UpdateIfEqual(x - chunk.pos.y, Chunk.ChunkSize - 1, new Vector3Int(x, y + 1, z));
-            UpdateIfEqual(x - chunk.pos.z, 0, new Vector3Int(x, y, z - 1));
-            UpdateIfEqual(x - chunk.pos.z, Chunk.ChunkSize - 1, new Vector3Int(x, y, z + 1));
+            UpdateIfEqual(Mathf.FloorToInt((x - chunk.pos.x) * ChunkDimensionInBloc), 0, chunk.normalizedPosition + new Vector3Int(-1, 0, 0));
+            UpdateIfEqual(Mathf.FloorToInt((x - chunk.pos.x) * ChunkDimensionInBloc), ChunkDimensionInBloc - 1, chunk.normalizedPosition + new Vector3Int(1, 0, 0));
+            UpdateIfEqual(Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc), 0, chunk.normalizedPosition + new Vector3Int(0, -1, 0));
+            UpdateIfEqual(Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc), ChunkDimensionInBloc - 1, chunk.normalizedPosition + new Vector3Int(0, 1, 0));
+            UpdateIfEqual(Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc), 0, chunk.normalizedPosition + new Vector3Int(0, 1, -1));
+            UpdateIfEqual(Mathf.FloorToInt((y - chunk.pos.y) * ChunkDimensionInBloc), ChunkDimensionInBloc - 1, chunk.normalizedPosition + new Vector3Int(0, 0, 1));
         }
     }
 
-    void UpdateIfEqual(int i, int j, Vector3Int pos)
+    void UpdateIfEqual(float i, float j, Vector3Int pos)
     {
         if (i == j)
         {
-            Chunk chunk = GetChunk(pos.x, pos.y, pos.z);
+            Chunk chunk = GetChunkFromNormalizedPosition(pos);
             if (chunk != null)
                 chunk.update = true;
         }
