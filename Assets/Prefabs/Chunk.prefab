@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 9212974771432887718}
   - component: {fileID: 9212974771432887719}
   - component: {fileID: 9212974771432887716}
-  - component: {fileID: 9212974771432887717}
+  - component: {fileID: 4974352993773499889}
   m_Layer: 0
   m_Name: Chunk
   m_TagString: Untagged
@@ -93,7 +93,7 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 14
   m_Mesh: {fileID: 0}
---- !u!114 &9212974771432887717
+--- !u!114 &4974352993773499889
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -102,13 +102,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 9212974771432887714}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d926b184149e59e48b7d0fb20796ca69, type: 3}
+  m_Script: {fileID: 11500000, guid: be20ac6716a0eb841a6731cd536de972, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  update: 1
-  world: {fileID: 0}
-  pos: {x: 0, y: 0, z: 0}
-  normalizedPosition: {x: 0, y: 0, z: 0}
-  sizeInBlocs: 0
-  blocSize: 0
   UseRenderForCollision: 1
+  NormalPosition: {x: 0, y: 0}
+  World: {fileID: 0}

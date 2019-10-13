@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Prism.Map;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,7 +51,7 @@ public class Modify : MonoBehaviour
                     for (int y = -1; y < 1; y++)
                         for (int z = -1; z < 1; z++)
                         {
-                            world.Destroy(x * 16, y * 16, z * 16);
+                           // world.Destroy(x * 16, y * 16, z * 16);
                         }
             }
         }

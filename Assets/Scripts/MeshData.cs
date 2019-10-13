@@ -14,10 +14,6 @@ public class MeshData
     public List<Vector3> collisionVertices = new List<Vector3>();
     public List<int> collisionTriangles = new List<int>();
 
-    public MeshData()
-    {
-
-    }
 
     public void AddQuadTriangles()
     {
@@ -29,5 +25,4 @@ public class MeshData
         triangles.Add(vertices.Count - 2);
         triangles.Add(vertices.Count - 1);
     }
-
 }

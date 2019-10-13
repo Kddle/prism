@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Prism.Map;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,12 +33,12 @@ public static class Serialization
         if (world == null)
             world = GameObject.FindObjectOfType<World>();
 
-        string filepath = Path.Combine(SavePath(chunk.world.name), chunk.name);
+        string filepath = Path.Combine(SavePath(chunk.World.name), chunk.name);
 
         IFormatter formatter = new BinaryFormatter();
         Stream stream = new FileStream(filepath, FileMode.Create, FileAccess.Write, FileShare.None);
 
-        formatter.Serialize(stream, chunk.blocs);
+        formatter.Serialize(stream, chunk.Blocs);
         stream.Close();
     }
 
@@ -46,7 +47,7 @@ public static class Serialization
         if (world == null)
             world = GameObject.FindObjectOfType<World>();
 
-        string filepath = Path.Combine(SavePath(chunk.world.name), chunk.name);
+        string filepath = Path.Combine(SavePath(chunk.World.name), chunk.name);
 
         if (!File.Exists(filepath))
             return false;
@@ -54,7 +55,7 @@ public static class Serialization
         IFormatter formatter = new BinaryFormatter();
         FileStream stream = new FileStream(filepath, FileMode.Open);
 
-        chunk.blocs = formatter.Deserialize(stream) as byte[,,];
+        chunk.Blocs = formatter.Deserialize(stream) as byte[,,];
 
         stream.Close();
         return true;

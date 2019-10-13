@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Prism.Map;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -36,7 +37,7 @@ public static class Terrain
             return false;
 
         Vector3Int pos = GetBlocPos(hit, adjacent);
-        chunk.world.SetBloc(pos.x, pos.y, pos.z, bloc);
+        chunk.World.SetBloc(new Vector3(pos.x, pos.y, pos.z), bloc);
 
         return true;
     }
@@ -49,7 +50,7 @@ public static class Terrain
 
         Vector3Int pos = GetBlocPos(hit, adjacent);
 
-        byte bloc = chunk.world.GetBloc(pos.x, pos.y, pos.z);
+        byte bloc = chunk.World.GetBloc(new Vector3(pos.x, pos.y, pos.z));
 
         return bloc;
     }
