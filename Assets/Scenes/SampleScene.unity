@@ -263,7 +263,7 @@ MonoBehaviour:
   RenderDistance: 4
   Player: {fileID: 1572043691}
   WorldConfiguration: {fileID: 11400000, guid: 6b1864028a900a34d882ff269ec36350, type: 2}
-  NoiseConfiguration: {fileID: 11400000, guid: ebe4d2b28555aa04e8b7bd41ad286922, type: 2}
+  NoiseMethod: {fileID: 11400000, guid: a7d4b07d0b5bda04190e9ecabc3bfb8d, type: 2}
   BlocsDefinition:
   - {fileID: 11400000, guid: 80f37cc19048a024697fe9daaf3d583e, type: 2}
   - {fileID: 11400000, guid: 29d5159ec1b9bf949beab58e5fa78d90, type: 2}
@@ -814,7 +814,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 981380736}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -56.142883, y: 13.518286, z: -221.62814}
+  m_LocalPosition: {x: 81.9, y: 13.518286, z: 112.7}
   m_LocalScale: {x: 50, y: 1, z: 50}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1018,7 +1018,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1572043691}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 40, z: 0}
+  m_LocalPosition: {x: 107.1, y: 20, z: 96.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 738012086}

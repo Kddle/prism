@@ -5,6 +5,22 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Prism.Map;
+using Newtonsoft.Json;
+using Prism;
+
+public class BlocData
+{
+    [JsonProperty("id")]
+    public byte Id { get; set; }
+    [JsonProperty("isSolid")]
+    public bool IsSolid { get; set; }
+    [JsonProperty("isVisible")]
+    public bool IsVisible { get; set; }
+    [JsonProperty("textureData")]
+    public byte[] TextureData { get; set; }
+
+    public BlocType BlocType => (BlocType)Id;
+}
 
 [CreateAssetMenu(fileName = "NewBloc", menuName = "Blocs/Bloc")]
 public class Bloc : ScriptableObject

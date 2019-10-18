@@ -1,4 +1,5 @@
 ﻿using Prism.Map.Configuration;
+using Prism.NoiseConfigurations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,8 @@ namespace Prism.Map
         public bool UseRenderForCollision = true;
 
         public Vector2Int NormalPosition;
-        public World World;
+        public Vector3Int WorldPosition;
+        public World World => transform.parent.GetComponent<World>();
 
         public byte[,,] Blocs;
 
@@ -31,26 +33,30 @@ namespace Prism.Map
             }
         }
 
-        public void Initialize(World world, WorldConfiguration worldConfiguration, Vector2Int normalPosition)
+        public void Initialize(Vector3Int worldPosition, int chunkSize)
         {
-            NormalPosition = normalPosition;
-            Blocs = new byte[worldConfiguration.ChunkSideLength, worldConfiguration.ChunkHeight, worldConfiguration.ChunkSideLength];
-            World = world;
-            name = $"{normalPosition.x}_{normalPosition.y}";
+            Blocs = new byte[chunkSize, chunkSize, chunkSize];
+            name = $"{worldPosition.x}_{worldPosition.y}_{worldPosition.z}";
+            WorldPosition = worldPosition;
 
             _filter = GetComponent<MeshFilter>();
             _collider = GetComponent<MeshCollider>();
         }
 
+        public void Init()
+        {
+            _filter = GetComponent<MeshFilter>();
+            _collider = GetComponent<MeshCollider>();
+        }
         public void SetBloc(int x, int y, int z, byte bloc)
         {
-            if (InRange(x) && InRangeUp(y) && InRange(z))
+            if (InRange(x) && InRange(y) && InRange(z))
                 Blocs[x, y, z] = bloc;
             else
                 World.SetBloc(
                     new Vector3(
                         transform.position.x + (x * World.WorldConfiguration.BlocScale),
-                        (y * World.WorldConfiguration.BlocScale),
+                        transform.position.y + (y * World.WorldConfiguration.BlocScale),
                         transform.position.z + (z * World.WorldConfiguration.BlocScale)
                     ),
                     bloc);
@@ -60,13 +66,13 @@ namespace Prism.Map
         {
             try
             {
-                if (InRange(x) && InRangeUp(y) && InRange(z))
+                if (InRange(x) && InRange(y) && InRange(z))
                     return Blocs[x, y, z];
                 else
                     return World.GetBloc(
                         new Vector3(
                             transform.position.x + (x * World.WorldConfiguration.BlocScale),
-                            (y * World.WorldConfiguration.BlocScale),
+                            transform.position.y + (y * World.WorldConfiguration.BlocScale),
                             transform.position.z + (z * World.WorldConfiguration.BlocScale)
                         ));
             }
@@ -74,7 +80,11 @@ namespace Prism.Map
             {
                 throw ex;
             }
-            
+        }
+
+        public void Generate(NoiseMethod noiseMethod)
+        {
+            Blocs = noiseMethod.FillChunk(transform.position, World.WorldConfiguration);
         }
 
         public bool InRange(int index)
@@ -87,7 +97,7 @@ namespace Prism.Map
 
         public bool InRangeUp(int y)
         {
-            if (y < 0 || y >= World.WorldConfiguration.ChunkHeight)
+            if (y < 0 || y >= World.WorldConfiguration.MaxWorldHeight)
                 return false;
 
             return true;
@@ -98,10 +108,11 @@ namespace Prism.Map
             MeshData meshData = new MeshData();
 
             for (int x = 0; x < World.WorldConfiguration.ChunkSideLength; x++)
-                for (int y = 0; y < World.WorldConfiguration.ChunkHeight; y++)
+                for (int y = 0; y < World.WorldConfiguration.ChunkSideLength; y++)
                     for (int z = 0; z < World.WorldConfiguration.ChunkSideLength; z++)
                     {
-                        meshData = World.BlocsDefinition[Blocs[x, y, z]].FillData(this, x, y, z, meshData, World.BlocsDefinition, World.WorldConfiguration.BlocScale);
+                        meshData = World.BlocService.GetMeshDataForBloc(meshData, (BlocType)Blocs[x, y, z], this, new Vector3Int(x, y, z), World.WorldConfiguration.BlocScale);
+                        //meshData = World.BlocsDefinition[Blocs[x, y, z]].FillData(this, x, y, z, meshData, World.BlocsDefinition, World.WorldConfiguration.BlocScale);
                     }
 
             RenderChunk(meshData);

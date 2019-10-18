@@ -1,14 +1,15 @@
-﻿using System;
+﻿using Prism.Map;
+using Prism.Map.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Prism.Map.Configuration
+namespace Prism.NoiseConfigurations
 {
-    [CreateAssetMenu(fileName = "NewNoiseConfiguration", menuName = "Prism/Noise Configuration")]
-    public class NoiseConfiguration : ScriptableObject
+    public abstract class NoiseMethod : ScriptableObject
     {
         [SerializeField]
         int octaves;
@@ -18,26 +19,16 @@ namespace Prism.Map.Configuration
         float amplitude;
         [SerializeField]
         float persistence;
-
-        [SerializeField]
-        float scale;
-
-        [SerializeField]
-        float densityThreshold;
         [SerializeField]
         float frequencyMultiplier;
 
-        [SerializeField]
-        float lacunarity;
+        public abstract byte[,,] FillChunk(Vector3 chunkWorldPosition, 
+            WorldConfiguration worldConfiguration);
 
         public int Octaves => octaves;
         public float Frequency => frequency;
         public float Amplitude => amplitude;
         public float Persistence => persistence;
-        public float Scale => scale;
-        public float DensityThreshold => densityThreshold;
         public float FrequencyMultiplier => frequencyMultiplier;
-
-        public float Lacunarity => lacunarity;
     }
 }
