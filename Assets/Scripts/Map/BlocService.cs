@@ -26,7 +26,7 @@ namespace Prism.Services
         public BlocService()
         {
             _blocs = new Dictionary<BlocType, BlocData>();
-            Load();
+            Load(true);
         }
 
         public BlocService(bool load = true)
@@ -34,7 +34,7 @@ namespace Prism.Services
             _blocs = new Dictionary<BlocType, BlocData>();
 
             if (load)
-                Load();
+                Load(true);
         }
 
         string SavePath
@@ -52,25 +52,38 @@ namespace Prism.Services
 
         string FilePath => Path.Combine(SavePath, _FILENAME);
 
-        public bool Load()
+        public bool Load(bool debug = false)
         {
             if (!File.Exists(FilePath))
                 return false;
 
 
-            IFormatter formatter = new BinaryFormatter();
-            FileStream stream = new FileStream(FilePath, FileMode.Open);
+            string fileContent;
 
-            string fileContent = formatter.Deserialize(stream) as string;
-            stream.Close();
+            if (debug)
+            {
+                using (StreamReader sr = new StreamReader(FilePath))
+                {
+                    fileContent = sr.ReadToEnd();
+                    sr.Close();
+                }
+            }
+            else
+            {
+                IFormatter formatter = new BinaryFormatter();
+                FileStream stream = new FileStream(FilePath, FileMode.Open);
+
+                fileContent = formatter.Deserialize(stream) as string;
+                stream.Close();
+            }
 
             BlocData[] blocsData = JsonConvert.DeserializeObject<BlocData[]>(fileContent);
 
             if (blocsData != null && blocsData.Length > 0)
             {
-                foreach (var blocData in blocsData)
+                for (int i = 0; i < blocsData.Length; i++)
                 {
-                    _blocs.Add(blocData.BlocType, blocData);
+                    _blocs.Add((BlocType)i, blocsData[i]);
                 }
 
                 return true;
@@ -79,68 +92,93 @@ namespace Prism.Services
             return false;
         }
 
-        public void SaveBlocs(string json)
+        public BlocData[] GetBlocsDefinitionArray()
         {
-            IFormatter formatter = new BinaryFormatter();
-            Stream stream = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None);
-
-            formatter.Serialize(stream, json);
-            stream.Close();
+            return Blocs.Values.ToArray();
         }
 
-        public void SaveBlocs()
+        public void SaveBlocs(string json, bool debug = false)
+        {
+            if (debug)
+            {
+                IFormatter formatter = new BinaryFormatter();
+                Stream stream = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+
+                formatter.Serialize(stream, json);
+                stream.Close();
+            }
+            else
+            {
+                using(StreamWriter sw = new StreamWriter(FilePath))
+                {
+                    sw.Write(json);
+                    sw.Close();
+                }
+            }
+        }
+
+        public void SaveBlocs(bool debug = false)
         {
             var blocsData = _blocs.Values.ToArray();
             var fileContent = JsonConvert.SerializeObject(blocsData);
 
-            SaveBlocs(fileContent);
+            SaveBlocs(fileContent, debug);
         }
 
-        public void SaveBlocs(BlocData[] data)
+        public void SaveBlocs(BlocData[] data, bool debug = false)
         {
             var fileContent = JsonConvert.SerializeObject(data);
-            SaveBlocs(fileContent);
+            SaveBlocs(fileContent, debug);
         }
+
+        #region MeshAndTextureServices
+
+        //public MeshData GetMeshDataForBlocFromShader(MeshData meshData, BlocType blocType, Chunk chunk, Vector3Int blocPosition, float blocScale)
+        //{
+
+        //}
 
         public MeshData GetMeshDataForBloc(MeshData meshData, BlocType blocType, Chunk chunk, Vector3Int blocPosition, float blocScale)
         {
-            if (!Blocs[blocType].IsVisible)
+            // If the bloc we want to build is not visible => return
+            if (Blocs[blocType].IsVisible == 0)
                 return meshData;
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y + 1, blocPosition.z)].IsSolid)
+            // Else, get neighbors
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y + 1, blocPosition.z)].IsVisible == 0)
             {
-                meshData = FaceDataUp(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataUpFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y - 1, blocPosition.z)].IsSolid)
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y - 1, blocPosition.z)].IsVisible == 0)
             {
-                meshData = FaceDataDown(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataDownFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y, blocPosition.z + 1)].IsSolid)
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y, blocPosition.z + 1)].IsVisible == 0)
             {
-                meshData = FaceDataNorth(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataNorthFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y, blocPosition.z - 1)].IsSolid)
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x, blocPosition.y, blocPosition.z - 1)].IsVisible == 0)
             {
-                meshData = FaceDataSouth(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataSouthFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x + 1, blocPosition.y, blocPosition.z)].IsSolid)
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x + 1, blocPosition.y, blocPosition.z)].IsVisible == 0)
             {
-                meshData = FaceDataEast(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataEastFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
-            if (!Blocs[(BlocType)chunk.GetBloc(blocPosition.x - 1, blocPosition.y, blocPosition.z)].IsSolid)
+            if (Blocs[(BlocType)chunk.GetBloc(blocPosition.x - 1, blocPosition.y, blocPosition.z)].IsVisible == 0)
             {
-                meshData = FaceDataWest(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
+                meshData = GetMeshDataWestFace(blocType, (blocPosition.x * blocScale), (blocPosition.y * blocScale), (blocPosition.z * blocScale), meshData, blocScale / 2f);
             }
 
             return meshData;
         }
 
-        protected virtual MeshData FaceDataUp
+        protected virtual MeshData GetMeshDataUpFace
          (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x - radius, y + radius, z + radius));
@@ -155,7 +193,7 @@ namespace Prism.Services
             return meshData;
         }
 
-        protected virtual MeshData FaceDataDown
+        protected virtual MeshData GetMeshDataDownFace
             (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x - radius, y - radius, z - radius));
@@ -169,7 +207,7 @@ namespace Prism.Services
             return meshData;
         }
 
-        protected virtual MeshData FaceDataNorth
+        protected virtual MeshData GetMeshDataNorthFace
             (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x + radius, y - radius, z + radius));
@@ -182,7 +220,7 @@ namespace Prism.Services
             return meshData;
         }
 
-        protected virtual MeshData FaceDataEast
+        protected virtual MeshData GetMeshDataEastFace
             (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x + radius, y - radius, z - radius));
@@ -195,7 +233,7 @@ namespace Prism.Services
             return meshData;
         }
 
-        protected virtual MeshData FaceDataSouth
+        protected virtual MeshData GetMeshDataSouthFace
             (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x - radius, y - radius, z - radius));
@@ -208,7 +246,7 @@ namespace Prism.Services
             return meshData;
         }
 
-        protected virtual MeshData FaceDataWest
+        protected virtual MeshData GetMeshDataWestFace
             (BlocType blocType, float x, float y, float z, MeshData meshData, float radius)
         {
             meshData.vertices.Add(new Vector3(x - radius, y - radius, z + radius));
@@ -226,46 +264,46 @@ namespace Prism.Services
             int x = 0;
             int y = 0;
 
-            if (Blocs[blocType].TextureData != null)
-            {
-                switch (Blocs[blocType].TextureData.Length)
-                {
-                    // Handle invisible blocs
-                    case 0:
-                        break;
-                        // Handle blocs that uses the same texture on every sides
-                    case 2:
-                        x = Blocs[blocType].TextureData[0];
-                        y = Blocs[blocType].TextureData[1];
-                        break;
-                    case 6:
-                        /* Handle blocs with 3 textures :
-                         * Array values [0-1] = Up Face
-                         * Array values [2-3] = Down Face
-                         * Array values [4-5] = Rest of Faces
-                         */
-                        switch (direction)
-                        {
-                            case Direction.U:
-                                x = Blocs[blocType].TextureData[0];
-                                y = Blocs[blocType].TextureData[1];
-                                break;
-                            case Direction.D:
-                                x = Blocs[blocType].TextureData[2];
-                                y = Blocs[blocType].TextureData[3];
-                                break;
-                            default:
-                                x = Blocs[blocType].TextureData[4];
-                                y = Blocs[blocType].TextureData[5];
-                                break;
-                        }
-                        break;
-                    default:
-                        throw new NotImplementedException("Blocs cannot handle that much textures yet.");
-                }
-            }
+        //    if (Blocs[blocType].TextureData != null)
+        //    {
+        //        switch (Blocs[blocType].TextureData.Length)
+        //        {
+        //             Handle invisible blocs
+        //            case 0:
+        //                break;
+        //        Handle blocs that uses the same texture on every sides
+        //            case 2:
+        //                x = Blocs[blocType].TextureData[0];
+        //        y = Blocs[blocType].TextureData[1];
+        //        break;
+        //            case 6:
+        //                /* Handle blocs with 3 textures :
+        //                 * Array values [0-1] = Up Face
+        //                 * Array values [2-3] = Down Face
+        //                 * Array values [4-5] = Rest of Faces
+        //                 */
+        //                switch (direction)
+        //        {
+        //            case Direction.U:
+        //                x = Blocs[blocType].TextureData[0];
+        //                y = Blocs[blocType].TextureData[1];
+        //                break;
+        //            case Direction.D:
+        //                x = Blocs[blocType].TextureData[2];
+        //                y = Blocs[blocType].TextureData[3];
+        //                break;
+        //            default:
+        //                x = Blocs[blocType].TextureData[4];
+        //                y = Blocs[blocType].TextureData[5];
+        //                break;
+        //        }
+        //        break;
+        //        default:
+        //                throw new NotImplementedException("Blocs cannot handle that much textures yet.");
+        //    }
+        //}
 
-            Tile tile = new Tile();
+        Tile tile = new Tile();
             tile.x = x;
             tile.y = y;
 
@@ -284,5 +322,7 @@ namespace Prism.Services
 
             return uvs;
         }
+
+        #endregion
     }
 }

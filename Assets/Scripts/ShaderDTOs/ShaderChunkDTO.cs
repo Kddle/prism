@@ -4,11 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-public enum NoiseType
+namespace Prism.ShaderDTOs
 {
-    UnityPerlin2D,
-    Perlin2D,
-    Perlin3D,
-    Simplex2D,
-    Simplex3D
+    struct ShaderChunkDTO
+    {
+
+    }
 }

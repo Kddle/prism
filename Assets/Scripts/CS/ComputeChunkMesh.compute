@@ -1,0 +1,166 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ComputeMesh
+#pragma kernel CalculateVisibleFaces
+#pragma kernel ComputeTriangles
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+struct BlocData {
+	bool IsVisible;
+	float2 UpTextureCoordinates;
+	float2 DownTextureCoordinates;
+	float2 RestTextureCoordinates;
+};
+
+// In parameters
+StructuredBuffer<int> blocsBuffer;
+StructuredBuffer<BlocData> blocsDefinitions;
+int blocsDefinitionsLength;
+
+int chunkLength;
+
+//RWStructuredBuffer<float3> vertices;
+//RWStructuredBuffer<int> triangles;
+
+
+AppendStructuredBuffer<float3> _vertices;
+AppendStructuredBuffer<int> _triangles;
+
+RWStructuredBuffer<int> meshInfos;
+
+float blocRadius = 0.25;
+
+[numthreads(8,8,1)]
+void CalculateVisibleFaces(uint3 id : SV_GroupThreadID)
+{
+	for (int y = 0; y < chunkLength; y++)
+	{
+		if (blocsBuffer[(id.x + 1) + ((y + 1) + 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process up face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+
+		if (blocsBuffer[(id.x + 1) + ((y + 1) - 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process down face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+
+		if (blocsBuffer[((id.x + 1) + 1) + (y + 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process right face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+
+		if (blocsBuffer[((id.x + 1) - 1) + (y + 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process left face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+
+		if (blocsBuffer[(id.x + 1) + (y + 1) * chunkLength + ((id.y + 1) + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process front face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+
+		if (blocsBuffer[(id.x + 1) + (y + 1) * chunkLength + ((id.y + 1) - 1) * chunkLength * chunkLength] == 0)
+		{
+			// process back face
+			meshInfos[0] += 4;
+			meshInfos[1] += 6;
+		}
+	}
+	
+}
+
+[numthreads(8,8,1)]
+void ComputeMesh(uint3 id : SV_GroupThreadID)
+{
+	for (int y = 0; y < chunkLength; y++)
+	{
+		if (blocsBuffer[(id.x + 1) + ((id.y + 1) + 1) * chunkLength + (id.z + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process up face
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y - blocRadius));
+		}
+
+		if (blocsBuffer[(id.x + 1) + ((y + 1) - 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process down face
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y + blocRadius));
+		}
+
+		if (blocsBuffer[((id.x + 1) + 1) + (y + 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process right face
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y + blocRadius));
+		}
+
+		if (blocsBuffer[((id.x + 1) - 1) + (y + 1) * chunkLength + (id.y + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process left face
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y - blocRadius));
+		}
+
+		if (blocsBuffer[(id.x + 1) + (y + 1) * chunkLength + ((id.y + 1) + 1) * chunkLength * chunkLength] == 0)
+		{
+			// process front face
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y + blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y + blocRadius));
+		}
+
+		if (blocsBuffer[(id.x + 1) + (y + 1) * chunkLength + ((id.y + 1) - 1) * chunkLength * chunkLength] == 0)
+		{
+			// process back face
+			_vertices.Append(float3(id.x - blocRadius, y - blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x - blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y + blocRadius, id.y - blocRadius));
+			_vertices.Append(float3(id.x + blocRadius, y - blocRadius, id.y - blocRadius));
+		}
+	}
+}
+
+[numthreads(8,8,1)]
+void ComputeTriangles(uint3 id : SV_GroupThreadID)
+{
+	/*_triangles.Append(1);
+	_triangles.Append(2);
+	_triangles.Append(3);*/
+
+	for (int y = 0; y < chunkLength; y++)
+	{
+		int index = id.x + id.y + y;
+
+		if (index != 0 && (index % 4) != 0 && index < meshInfos[0])
+		{
+			_triangles.Append(index - 4);
+			_triangles.Append(index - 3);
+			_triangles.Append(index - 2);
+
+			_triangles.Append(index - 4);
+			_triangles.Append(index - 2);
+			_triangles.Append(index - 1);
+		}
+	}
+}

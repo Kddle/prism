@@ -13,7 +13,7 @@ namespace Prism.Map.Configuration
         [Tooltip("Length of X & Z side of a chunk in blocs.")]
         public int ChunkSideLength;
 
-        [Tooltip("Max height of the world in blocs.")]
+        [Tooltip("Max height of the world in Vector3.")]
         public int MaxWorldHeight;
 
         [Tooltip("Size of 1 bloc unit. (Please keep it a multiple of 0.05.)")]

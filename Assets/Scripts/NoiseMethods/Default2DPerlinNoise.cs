@@ -7,7 +7,7 @@ using Prism.Map;
 using Prism.Map.Configuration;
 using UnityEngine;
 
-namespace Prism.NoiseConfigurations
+namespace Prism.NoiseMethods
 {
     [CreateAssetMenu(fileName = "NewDefaultUnityPerlinNoise2DConfiguration", menuName = "Prism/Noise Methods/ Unity Perlin Noise 2D")]
     public class Default2DPerlinNoise : NoiseMethod
@@ -33,11 +33,11 @@ namespace Prism.NoiseConfigurations
                     for (int y = 0; y < worldConfiguration.ChunkSideLength; y++)
                     {
                         if (y < BaseHeight)
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.ROCK].Id;
+                            blocs[x, y, z] = (byte)BlocType.ROCK;
                         else if (y <= Mathf.RoundToInt(maxHeights[x, z] * worldConfiguration.ChunkSideLength))
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.ROCK].Id;
+                            blocs[x, y, z] = (byte)BlocType.GRASS;
                         else
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.AIR].Id;
+                            blocs[x, y, z] = (byte)BlocType.AIR;
                     }
                 }
 

@@ -8,7 +8,7 @@ using Prism.Map.Configuration;
 using Prism.NoiseFunc;
 using UnityEngine;
 
-namespace Prism.NoiseConfigurations
+namespace Prism.NoiseMethods
 {
     [CreateAssetMenu(fileName = "NewMixedPerlinNoise1", menuName = "Prism/Noise Methods/Mixed Perlin Noise 1")]
     public class MixedPerlinNoise1 : Default2DPerlinNoise
@@ -46,11 +46,11 @@ namespace Prism.NoiseConfigurations
                         float currentY = chunkWorldPosition.y + (y * worldConfiguration.BlocScale);
 
                         if (currentY < BaseHeight)
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.ROCK].Id;
+                            blocs[x, y, z] = (byte)BlocType.ROCK;
                         else if (currentY <= maxHeights[x, z])
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.GRASS].Id;
+                            blocs[x, y, z] = (byte)BlocType.GRASS;
                         else
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.AIR].Id;
+                            blocs[x, y, z] = (byte)BlocType.AIR;
                     }
 
             for (int x = 0; x < worldConfiguration.ChunkSideLength; x++)
@@ -66,7 +66,7 @@ namespace Prism.NoiseConfigurations
                         bool isAir = value <= AirThreshold;
 
                         if (isAir)
-                            blocs[x, y, z] = World.BlocService.Blocs[BlocType.AIR].Id;
+                            blocs[x, y, z] = (byte)BlocType.AIR;
                     }
 
             return blocs;

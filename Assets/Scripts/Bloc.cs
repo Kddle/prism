@@ -8,18 +8,19 @@ using Prism.Map;
 using Newtonsoft.Json;
 using Prism;
 
-public class BlocData
+public struct BlocData
 {
-    [JsonProperty("id")]
-    public byte Id { get; set; }
-    [JsonProperty("isSolid")]
-    public bool IsSolid { get; set; }
     [JsonProperty("isVisible")]
-    public bool IsVisible { get; set; }
-    [JsonProperty("textureData")]
-    public byte[] TextureData { get; set; }
+    public int IsVisible;
 
-    public BlocType BlocType => (BlocType)Id;
+    [JsonProperty("upTextureCoordinates")]
+    public Vector2 UpTextureCoordinates;
+
+    [JsonProperty("downTextureCoordinates")]
+    public Vector2 DownTextureCoordinates;
+
+    [JsonProperty("restTextureCoordinates")]
+    public Vector2 RestTextureCoordinates;
 }
 
 [CreateAssetMenu(fileName = "NewBloc", menuName = "Blocs/Bloc")]

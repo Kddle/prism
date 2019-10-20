@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b66eda2a4b2e0f438726966da76d852, type: 3}
   m_Name: WorldConfig1
   m_EditorClassIdentifier: 
-  ChunkSideLength: 16
+  ChunkSideLength: 32
   MaxWorldHeight: 96
   BlocScale: 0.5
-  HorizontalRenderDistance: 2
-  VerticalRenderDistance: 2
+  HorizontalRenderDistance: 1
+  VerticalRenderDistance: 1
