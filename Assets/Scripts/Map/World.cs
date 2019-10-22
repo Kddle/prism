@@ -27,7 +27,6 @@ namespace Prism.Map
         public WorldConfiguration WorldConfiguration;
         public NoiseMethod NoiseMethod;
         public GameObject ChunkPrefab;
-        public ComputeShader MeshChunkComputeShader;
 
 
         #region ServiceAccessors
@@ -65,34 +64,6 @@ namespace Prism.Map
             var parts = name.Split('_');
             return new Vector3Int(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
         }
-
-        public Chunk[] GetChunkNeighbors(Chunk chunk)
-        {
-            var position = GetChunkPositionFromName(chunk.name);
-
-            var neighborsPositions = new List<Vector3Int>
-            {
-                position + new Vector3Int(0, 1, 0), // Up Neighbor
-                position + new Vector3Int(0, -1, 0), // Down Neighbor
-                position + new Vector3Int(-1, 0, 0), // Left Neighbor
-                position + new Vector3Int(1, 0, 0), // Right Neighbor
-                position + new Vector3Int(0, 0, 1), // Front Neighbor
-                position + new Vector3Int(0, 0, -1) // Back Neighbor
-            };
-
-            List<Chunk> chunks = new List<Chunk>();
-
-            foreach (var nPosition in neighborsPositions)
-            {
-                var chunkTransform = transform.Find(GetChunkNameFromPosition(nPosition));
-                if (chunkTransform != null)
-                    chunks.Add(chunkTransform.GetComponent<Chunk>());
-                else
-                    chunks.Add(null);
-            }
-
-            return chunks.ToArray();
-        }
         #endregion
 
         #region UnityLifecycle
@@ -102,11 +73,10 @@ namespace Prism.Map
 
             foreach (var bloc in BlocService.Blocs)
             {
-                Debug.Log($"Bloc : {bloc.Key} | isVisible = {bloc.Value.IsVisible}");
+                Debug.Log($"Bloc : {bloc.Key} | isVisible = {bloc.Value.IsSolid}");
             }
 
             StartCoroutine(CreateWorldFromPosition(Player.transform.position));
-            Debug.Log($"Done !");
         }
 
         private void Update()
@@ -208,7 +178,7 @@ namespace Prism.Map
             if (chunk == null)
                 throw new ArgumentNullException(nameof(chunk));
 
-            chunk.UpdateChunk(BlocService.GetBlocsDefinitionArray(), MeshChunkComputeShader);
+            chunk.UpdateChunk();
         }
         #endregion
 

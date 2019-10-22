@@ -1,38 +1,38 @@
 [
     {
         "name": "air",
-        "isVisible": 0
+        "isSolid": 0
     },
     {
         "name": "rock",
-        "isVisible": 1,
+        "isSolid": 1,
         "upTextureCoordinates": {
-            "x": 0.0,
-            "y": 0.0
+            "x": 0,
+            "y": 0
         },
         "downTextureCoordinates": {
-            "x": 0.0,
-            "y": 0.0
+            "x": 0,
+            "y": 0
         },
         "restTextureCoordinates": {
-            "x": 0.0,
-            "y": 0.0
+            "x": 0,
+            "y": 0
         }
     },
     {
         "name": "grass",
-        "isVisible": 1,
+        "isSolid": 1,
         "upTextureCoordinates": {
-            "x": 2.0,
-            "y": 0.0
+            "x": 2,
+            "y": 0
         },
         "downTextureCoordinates": {
-            "x": 1.0,
-            "y": 0.0
+            "x": 1,
+            "y": 0
         },
         "restTextureCoordinates": {
-            "x": 3.0,
-            "y": 0.0
+            "x": 3,
+            "y": 0
         }
     }
 ]

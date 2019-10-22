@@ -1,0 +1,53 @@
+﻿#include "Assets/Scripts/CS/Noise.compute"
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWStructuredBuffer<float> NoiseMap;
+RWStructuredBuffer<float> NoiseConfig;
+
+// NoiseConfig :
+// [0] = frequency
+// [1] = amplitude
+// [2] = octaves
+// [3] = persistence
+// [4] = frequencyMultiplier
+// [5] = smooth factor
+// [6] = noise type
+
+float fBM(float x, float y, float z, uint noiseType)
+{
+	float total = 0;
+	float maxValue = 0;
+
+	float frequency = NoiseConfig[0];
+	float amplitude = NoiseConfig[1];
+	float persistence = NoiseConfig[3];
+	float frequencyMultiplier = NoiseConfig[4];
+
+	uint octaves = (uint)NoiseConfig[2];
+
+	for (uint i = 0; i < octaves; i++)
+	{
+		if (noiseType == 0)
+			total += GeneratePerlinNoise(x * frequency, y * frequency, z * frequency) * amplitude;
+		else if (noiseType == 1)
+			total += GenerateSimplexNoise(x * frequency, y * frequency, z * frequency) * amplitude;
+
+		maxValue += amplitude;
+		amplitude *= persistence;
+		frequency *= frequencyMultiplier;
+	}
+
+	return total / maxValue;
+}
+
+[numthreads(32, 32, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	float smooth = NoiseConfig[5];
+	uint noiseType = (int)NoiseConfig[6];
+
+	NoiseMap[id.x * 1024 + id.y] = fBM(id.x * smooth, id.y * smooth, 1, noiseType);
+}

@@ -30,6 +30,10 @@ RWStructuredBuffer<int> meshInfos;
 
 float blocRadius = 0.25;
 
+bool test()
+{
+	return true;
+}
 [numthreads(8,8,1)]
 void CalculateVisibleFaces(uint3 id : SV_GroupThreadID)
 {

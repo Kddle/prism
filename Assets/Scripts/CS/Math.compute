@@ -1,0 +1,83 @@
+﻿float lerp(float a, float b, float x)
+{
+	return a + x * (b - a);
+}
+
+float inverseLerp(float a, float b, float x)
+{
+	return (x - a) / (b - a);
+}
+
+float map(float newmin, float newmax, float omin, float omax, float value)
+{
+	return lerp(newmin, newmax, inverseLerp(omin, omax, value));
+}
+
+uint inc(uint num)
+{
+	num++;
+	return num;
+}
+
+float fade(float t)
+{
+	// Fade function as defined by Ken Perlin.  This eases coordinate values
+	// so that they will "ease" towards integral values.  This ends up smoothing
+	// the final output.
+	return t * t * t * (t * (t * 6 - 15) + 10);         // 6t^5 - 15t^4 + 10t^3
+}
+
+uint fastFloor(float x)
+{
+	if (x > 0.0)
+		return (uint)x;
+	else
+		return (uint)x - 1;
+}
+
+uint mod(uint x, uint m)
+{
+	uint a = x % m;
+
+	if (a < 0)
+		return a + m;
+	else
+		return a;
+}
+
+float grad(uint hash, float x)
+{
+	uint h = hash & 15;
+	float g = 1.0 + (h & 7);
+
+	if ((h & 8) != 0)
+		g = -g;
+
+	return (g * x);
+}
+
+float grad(uint hash, float x, float y)
+{
+	uint h = hash & 7;
+	float u = h < 4 ? x : y;
+	float v = h < 4 ? y : x;
+
+	return ((h & 1) != 0 ? -u : u) + ((h & 2) != 0 ? -2.0 * v : 2.0 * v);
+}
+
+float grad(uint hash, float x, float y, float z)
+{
+	uint h = hash & 15;
+	float u = h < 8 ? x : y;
+	float v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+	return ((h & 1) != 0 ? -u : u) + ((h & 2) != 0 ? -v : v);
+}
+
+float grad(uint hash, float x, float y, float z, float t)
+{
+	uint h = hash & 31;
+	float u = h < 24 ? x : y;
+	float v = h < 16 ? y : z;
+	float w = h < 8 ? z : t;
+	return ((h & 1) != 0 ? -u : u) + ((h & 2) != 0 ? -v : v) + ((h & 4) != 0 ? -w : w);
+}
