@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 public enum Direction
 {
-    N, E, S, W, U, D
+    N = 4, E = 3, S = 5, W = 2, U = 0, D = 1
 }

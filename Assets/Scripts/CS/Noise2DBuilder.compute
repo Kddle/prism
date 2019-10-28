@@ -1,13 +1,33 @@
 ﻿#include "Assets/Scripts/CS/Noise.compute"
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
-
+#pragma kernel GenerateDensityMap
+#pragma kernel ComputeVisibleFaces
+#pragma kernel FillMesh
+struct Face
+{
+	float3 position;
+	int direction;
+};
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWStructuredBuffer<float> NoiseMap;
-RWStructuredBuffer<float> NoiseConfig;
-
-// NoiseConfig :
+RWStructuredBuffer<uint> NoiseMap;
+RWStructuredBuffer<float> HeightNoiseConfig;
+RWStructuredBuffer<float> AirNoiseConfig;
+RWStructuredBuffer<float> ChunkPosition;
+RWStructuredBuffer<uint> BlocsCollection;
+RWStructuredBuffer<uint> UpNeighborCollection;
+RWStructuredBuffer<uint> DownNeighborCollection;
+RWStructuredBuffer<uint> LeftNeighborCollection;
+RWStructuredBuffer<uint> RightNeighborCollection;
+RWStructuredBuffer<uint> FrontNeighborCollection;
+RWStructuredBuffer<uint> BackNeighborCollection;
+AppendStructuredBuffer<Face> Faces;
+RWStructuredBuffer<float3> Vertices;
+RWStructuredBuffer<int> Triangles;
+RWStructuredBuffer<Face> FacesData;
+int FacesCount;
+// HeightNoiseConfig :
 // [0] = frequency
 // [1] = amplitude
 // [2] = octaves
@@ -16,17 +36,26 @@ RWStructuredBuffer<float> NoiseConfig;
 // [5] = smooth factor
 // [6] = noise type
 
-float fBM(float x, float y, float z, uint noiseType)
+// AirNoiseConfig :
+// [0] = frequency
+// [1] = amplitude
+// [2] = octaves
+// [3] = persistence
+// [4] = frequencyMultiplier
+// [5] = smooth factor
+// [6] = noise type
+// [7] = density threshold
+
+
+float fBM(float x, float y, float z, uint noiseType, float freq, float amp, float pers, float freqMult, uint octaves)
 {
 	float total = 0;
 	float maxValue = 0;
 
-	float frequency = NoiseConfig[0];
-	float amplitude = NoiseConfig[1];
-	float persistence = NoiseConfig[3];
-	float frequencyMultiplier = NoiseConfig[4];
-
-	uint octaves = (uint)NoiseConfig[2];
+	float frequency = freq;
+	float amplitude = amp;
+	float persistence = pers;
+	float frequencyMultiplier = freqMult;
 
 	for (uint i = 0; i < octaves; i++)
 	{
@@ -43,11 +72,458 @@ float fBM(float x, float y, float z, uint noiseType)
 	return total / maxValue;
 }
 
-[numthreads(32, 32, 1)]
+[numthreads(4, 4, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-	float smooth = NoiseConfig[5];
-	uint noiseType = (int)NoiseConfig[6];
+	float smooth = HeightNoiseConfig[5];
+	uint noiseType = (uint)HeightNoiseConfig[6];
 
-	NoiseMap[id.x * 1024 + id.y] = fBM(id.x * smooth, id.y * smooth, 1, noiseType);
+	NoiseMap[id.x + id.y * 32] = fBM((id.x + ChunkPosition[0]) * smooth, (id.y + ChunkPosition[2]) * smooth, 1 * smooth, noiseType, HeightNoiseConfig[0], HeightNoiseConfig[1], HeightNoiseConfig[3], HeightNoiseConfig[4], (uint)HeightNoiseConfig[2]);
 }
+
+[numthreads(8, 8, 8)]
+void GenerateDensityMap(uint3 id : SV_DispatchThreadID)
+{
+	float maxHeight = 256.0;
+
+	float heightSmooth = HeightNoiseConfig[5];
+	uint heightNoiseType = (uint)HeightNoiseConfig[6];
+
+	float airSmooth = AirNoiseConfig[5];
+	uint airNoiseType = (uint)AirNoiseConfig[6];
+
+	//NoiseMap[id.x + id.y * 64] = fBM(id.x * airSmooth, id.y * airSmooth, id.z * airSmooth, airNoiseType, AirNoiseConfig[0], AirNoiseConfig[1], AirNoiseConfig[3], AirNoiseConfig[4], (uint)AirNoiseConfig[2]);
+	float density = fBM((id.x + ChunkPosition[0]) * airSmooth, (id.y + ChunkPosition[1]) * airSmooth, (id.z + ChunkPosition[2]) * airSmooth, airNoiseType, AirNoiseConfig[0], AirNoiseConfig[1], AirNoiseConfig[3], AirNoiseConfig[4], (uint)AirNoiseConfig[2]);
+	float columnMaxHeight = fBM((id.x + ChunkPosition[0]) * heightSmooth, (id.z + ChunkPosition[2]) * heightSmooth, 1 * heightSmooth, heightNoiseType, HeightNoiseConfig[0], HeightNoiseConfig[1], HeightNoiseConfig[3], HeightNoiseConfig[4], (uint)HeightNoiseConfig[2]) * maxHeight;
+	//columnMaxHeight = map(0, maxHeight, -1, 1, columnMaxHeight);
+
+	if (density < AirNoiseConfig[7])
+		NoiseMap[id.x + id.y * 32 + id.z * 32 * 32] = 0;
+	else if ((uint)(id.y + ChunkPosition[1]) == (uint)columnMaxHeight)
+		NoiseMap[id.x + id.y * 32 + id.z * 32 * 32] = 2;
+	else if (id.y + ChunkPosition[1] < (uint)columnMaxHeight)
+		NoiseMap[id.x + id.y * 32 + id.z * 32 * 32] = 1;
+	else
+		NoiseMap[id.x + id.y * 32 + id.z * 32 * 32] = 0;
+}
+
+[numthreads(8, 8, 8)]
+void FillMesh(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x + id.y * 32 + id.z * 32 * 32 < FacesCount)
+	{
+		int faceId = id.x + id.y * 32 + id.z * 32 * 32;
+		int verticesIndex = faceId / 4;
+		int trianglesIndex = faceId / 6;
+
+		Face face = FacesData[faceId];
+
+		if (face.direction == 0)
+		{
+			Vertices[verticesIndex] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+		else if (face.direction == 1)
+		{
+			Vertices[verticesIndex] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+		else if (face.direction == 2)
+		{
+			Vertices[verticesIndex] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+		else if (face.direction == 3)
+		{
+			Vertices[verticesIndex] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+		else if (face.direction == 4)
+		{
+			Vertices[verticesIndex] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z + 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z + 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+		else if (face.direction == 5)
+		{
+			Vertices[verticesIndex] = float3(face.position.x - 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 1] = float3(face.position.x - 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 2] = float3(face.position.x + 0.5, face.position.y + 0.5, face.position.z - 0.5);
+			Vertices[verticesIndex + 3] = float3(face.position.x + 0.5, face.position.y - 0.5, face.position.z - 0.5);
+			Triangles[trianglesIndex] = verticesIndex;
+			Triangles[trianglesIndex + 1] = verticesIndex + 1;
+			Triangles[trianglesIndex + 2] = verticesIndex + 2;
+
+			Triangles[trianglesIndex + 3] = verticesIndex;
+			Triangles[trianglesIndex + 4] = verticesIndex + 2;
+			Triangles[trianglesIndex + 5] = verticesIndex + 3;
+		}
+
+		
+	}
+}
+
+[numthreads(8, 8, 8)]
+void ComputeVisibleFaces(uint3 id : SV_DispatchThreadID)
+{
+	if (BlocsCollection[id.x + id.y * 32 + id.z * 32 * 32] != 0)
+	{
+		// Up Face
+		if (id.y + 1 < 32)
+		{
+			if (BlocsCollection[id.x + (id.y + 1) * 32 + id.z * 32 * 32] == 0)
+			{
+				Face upFace;
+				upFace.position = float3(id.x, id.y, id.z);
+				upFace.direction = 0;
+
+				Faces.Append(upFace);
+
+				/*Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));*/
+			}
+		}
+		else
+		{
+			if (UpNeighborCollection[id.x + 0 * 32 + id.z * 32 * 32] == 0)
+			{
+				Face upFace;
+				upFace.position = float3(id.x, id.y, id.z);
+				upFace.direction = 0;
+
+				Faces.Append(upFace);
+
+				/*Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));*/
+			}
+		}
+
+		// Down Face
+		if (id.y - 1 >= 0)
+		{
+			if (BlocsCollection[id.x + (id.y - 1) * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 1;
+
+				Faces.Append(face);
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));*/
+			}
+		}
+		else
+		{
+			if (DownNeighborCollection[id.x + 31 * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 1;
+
+				Faces.Append(face);
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));*/
+			}
+		}
+
+		// Left Face
+		if (id.x - 1 >= 0)
+		{
+			if (BlocsCollection[(id.x - 1) + id.y * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 2;
+
+				Faces.Append(face);
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));*/
+			}
+		}
+		else
+		{
+			if (LeftNeighborCollection[31 + id.y * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 2;
+
+				Faces.Append(face);
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));*/
+			}
+		}
+
+		// Right Face
+		if (id.x + 1 < 32)
+		{
+			if (BlocsCollection[(id.x + 1) + id.y * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 3;
+
+				Faces.Append(face);
+
+				/*Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));*/
+			}
+		}
+		else
+		{
+			if (RightNeighborCollection[0 + id.y * 32 + id.z * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 3;
+
+				Faces.Append(face);
+
+				//Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));
+				//Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				//Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				//Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));
+			}
+		}
+
+		// Front Face
+		if (id.z + 1 < 32)
+		{
+			if (BlocsCollection[id.x + id.y * 32 + (id.z + 1) * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 4;
+
+				Faces.Append(face);
+
+				/*Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));*/
+			}
+		}
+		else
+		{
+			if (FrontNeighborCollection[id.x + id.y * 32 + 0 * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 4;
+
+				Faces.Append(face);
+
+				/*Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z + 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z + 0.5));*/
+			}
+		}
+
+		// Back Face
+		if (id.z - 1 >= 0)
+		{
+			if (BlocsCollection[id.x + id.y * 32 + (id.z - 1) * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 5;
+
+				Faces.Append(face);
+
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));*/
+			}
+		}
+		else
+		{
+			if (BackNeighborCollection[id.x + id.y * 32 + 31 * 32 * 32] == 0)
+			{
+				Face face;
+				face.position = float3(id.x, id.y, id.z);
+				face.direction = 5;
+
+				Faces.Append(face);
+
+				/*Vertices.Append(float3(id.x - 0.5, id.y - 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x - 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y + 0.5, id.z - 0.5));
+				Vertices.Append(float3(id.x + 0.5, id.y - 0.5, id.z - 0.5));*/
+			}
+		}
+	}
+}
+
+/*
+
+if (BlocsCollection[(id.x + 1) + (id.y + 1) * 32 + (id.z + 1) * 32 * 32] == 0)
+		return;
+
+	if (BlocsCollection[(id.x + 1) + (id.y + 2) * 32 + (id.z + 1) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+
+	if (BlocsCollection[(id.x + 1) + (id.y) * 32 + (id.z + 1) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+
+	if (BlocsCollection[(id.x) + (id.y + 1) * 32 + (id.z + 1) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+
+	if (BlocsCollection[(id.x + 2) + (id.y + 1) * 32 + (id.z + 1) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+
+	if (BlocsCollection[(id.x + 1) + (id.y + 1) * 32 + (id.z + 2) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+
+	if (BlocsCollection[(id.x + 1) + (id.y + 1) * 32 + (id.z) * 32 * 32] == 0)
+	{
+		FacesData.Append(1);
+	}
+	*/
+
+	/*
+	if (BlocsCollection[id.x + id.y * 32 + id.z * 32 * 32] != 0)
+		{
+			// Up Face
+			if (id.y + 1 < 32)
+			{
+				if (BlocsCollection[id.x + (id.y + 1) * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (UpNeighborCollection[id.x + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+
+			// Down Face
+			if (id.y - 1 >= 0)
+			{
+				if (BlocsCollection[id.x + (id.y - 1) * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (DownNeighborCollection[id.x + 31 * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+
+			// Left Face
+			if (id.x - 1 >= 0)
+			{
+				if (BlocsCollection[(id.x - 1) + id.y * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (LeftNeighborCollection[31 + id.y * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+
+			// Right Face
+			if (id.x + 1 < 32)
+			{
+				if (BlocsCollection[(id.x + 1) + id.y * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (RightNeighborCollection[0 + id.y * 32 + id.z * 32 * 32] == 0)
+					FacesData.Append(1);
+			}
+
+			// Front Face
+			if (id.z + 1 < 32)
+			{
+				if (BlocsCollection[id.x + id.y * (32 + (id.z + 1) * 32 * 32)] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (FrontNeighborCollection[id.x + (id.y * 32) + (0 * 32 * 32)] == 0)
+					FacesData.Append(1);
+			}
+
+			// Back Face
+			if (id.z - 1 >= 0)
+			{
+				if (BlocsCollection[id.x + (id.y * 32) + ((id.z - 1) * 32 * 32)] == 0)
+					FacesData.Append(1);
+			}
+			else
+			{
+				if (BackNeighborCollection[id.x + (id.y * 32) + (31 * 32 * 32)] == 0)
+					FacesData.Append(1);
+			}
+		}
+	*/
+

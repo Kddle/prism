@@ -1,0 +1,81 @@
+﻿#include "Assets/Scripts/CS/Noise.compute"
+
+#pragma kernel CSMain
+
+struct NoiseConfig
+{
+	int octaves;
+	int noiseType;
+	float frequency;
+	float frequencyMultiplier;
+	float persistence;
+	float smoothFactor;
+	float amplitude;
+};
+
+float maxHeight;
+float airThreshold;
+
+RWStructuredBuffer<uint> data;
+RWStructuredBuffer<NoiseConfig> noises;
+RWStructuredBuffer<float> chunkWorldPosition;
+
+float fBM(float x, float y, float z, NoiseConfig noiseConfig)
+{
+	float total = 0;
+	float maxValue = 0;
+
+	float frequency = noiseConfig.frequency;
+	float amplitude = noiseConfig.amplitude;
+
+	for (uint i = 0; i < noiseConfig.octaves; i++)
+	{
+		if (noiseConfig.noiseType == 0)
+			total += GeneratePerlinNoise(x * frequency, y * frequency, z * frequency) * amplitude;
+		else if (noiseConfig.noiseType == 1)
+			total += GenerateSimplexNoise(x * frequency, y * frequency, z * frequency) * amplitude;
+
+		maxValue += amplitude;
+		amplitude *= noiseConfig.persistence;
+		frequency *= noiseConfig.frequencyMultiplier;
+	}
+
+	return total / maxValue;
+}
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	float3 chunkPosition = float3(chunkWorldPosition[0], chunkWorldPosition[1], chunkWorldPosition[2]);
+
+	float density = fBM(
+		(id.x + chunkPosition.x) * noises[1].smoothFactor,
+		(id.y + chunkPosition.y) * noises[1].smoothFactor,
+		(id.z + chunkPosition.z) * noises[1].smoothFactor,
+		noises[1]
+	);
+
+	float columnMaxHeight = (fBM(
+		(id.x + chunkPosition.x) * noises[0].smoothFactor,
+		(id.z + chunkPosition.z) * noises[0].smoothFactor,
+		1 * noises[0].smoothFactor,
+		noises[0]
+	) + 0.35) * maxHeight;
+
+	if (density < airThreshold)
+	{
+		data[id.x + id.y * 32 + id.z * 32 * 32] = 0;
+	}
+	else if ((uint)(id.y + chunkPosition.y) == (uint)columnMaxHeight)
+	{
+		data[id.x + id.y * 32 + id.z * 32 * 32] = 2;
+	}
+	else if (id.y + chunkPosition.y < columnMaxHeight)
+	{
+		data[id.x + id.y * 32 + id.z * 32 * 32] = 1;
+	}
+	else
+	{
+		data[id.x + id.y * 32 + id.z * 32 * 32] = 0;
+	}
+}

@@ -151,6 +151,26 @@ namespace Prism.Map
         }
 
         #region ChunksManagement
+        public Chunk CreateEmptyChunk(Vector3Int position)
+        {
+            var alreadyExistingChunk = transform.Find(GetChunkNameFromPosition(position));
+
+            if (alreadyExistingChunk)
+                return alreadyExistingChunk.GetComponent<Chunk>();
+
+            var chunkWorldPosition = new Vector3(
+                position.x * WorldConfiguration.ChunkWorldSize,
+                position.y * WorldConfiguration.ChunkWorldSize,
+                position.z * WorldConfiguration.ChunkWorldSize
+            );
+
+            var chunkGameObject = Instantiate(ChunkPrefab, chunkWorldPosition, Quaternion.Euler(Vector3.zero), transform) as GameObject;
+            var chunk = chunkGameObject.GetComponent<Chunk>();
+
+            chunk.Initialize(position, WorldConfiguration.ChunkSideLength);
+
+            return chunk;
+        }
         Chunk CreateChunk(Vector3Int position)
         {
             var alreadyExistingChunk = transform.Find(GetChunkNameFromPosition(position));

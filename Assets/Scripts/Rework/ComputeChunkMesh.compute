@@ -1,0 +1,99 @@
+﻿#pragma kernel CSMain
+
+struct ChunkFace
+{
+	float3 center;
+	int direction;
+	int2 tileUp;
+	int2 tileDown;
+	int2 tileBorders;
+};
+
+RWStructuredBuffer<float3> vertices;
+RWStructuredBuffer<int> triangles;
+RWStructuredBuffer<float2> uvs;
+RWStructuredBuffer<ChunkFace> faces;
+int faceCount;
+float tileSize;
+
+[numthreads(1024, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x < faceCount)
+	{
+		tileSize = 0.25;
+
+		int faceId = id.x;
+		int vertexId = faceId * 4;
+		int triangleId = faceId * 6;
+
+		ChunkFace face = faces[faceId];
+
+		switch (face.direction)
+		{
+		case 0:
+			vertices[vertexId] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			break;
+		case 1:
+			vertices[vertexId] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			break;
+		case 2:
+			vertices[vertexId] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			break;
+		case 3:
+			vertices[vertexId] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			break;
+		case 4:
+			vertices[vertexId] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z + 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z + 0.5f);
+			break;
+		case 5:
+			vertices[vertexId] = float3(face.center.x - 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 1] = float3(face.center.x - 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 2] = float3(face.center.x + 0.5f, face.center.y + 0.5f, face.center.z - 0.5f);
+			vertices[vertexId + 3] = float3(face.center.x + 0.5f, face.center.y - 0.5f, face.center.z - 0.5f);
+			break;
+		}
+
+		triangles[triangleId] = vertexId;
+		triangles[triangleId + 1] = vertexId + 1;
+		triangles[triangleId + 2] = vertexId + 2;
+
+		triangles[triangleId + 3] = vertexId;
+		triangles[triangleId + 4] = vertexId + 2;
+		triangles[triangleId + 5] = vertexId + 3;
+
+		int2 tile = int2(0, 0);
+		switch (face.direction)
+		{
+		case 0:
+			tile = face.tileUp;
+			break;
+		case 1:
+			tile = face.tileDown;
+			break;
+		default:
+			tile = face.tileBorders;
+			break;
+		}
+
+		uvs[vertexId] = float2((float)(tileSize * tile.x + tileSize), (float)(tileSize * tile.y));
+		uvs[vertexId + 1] = float2((float)(tileSize * tile.x + tileSize), (float)(tileSize * tile.y + tileSize));
+		uvs[vertexId + 2] = float2((float)(tileSize * tile.x), (float)(tileSize * tile.y + tileSize));
+		uvs[vertexId + 3] = float2((float)(tileSize * tile.x), (float)(tileSize * tile.y));
+	}
+}

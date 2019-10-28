@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Prism.Components;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,5 +25,10 @@ public class MeshData
         triangles.Add(vertices.Count - 4);
         triangles.Add(vertices.Count - 2);
         triangles.Add(vertices.Count - 1);
+    }
+
+    public MeshData AddFace(Face face)
+    {
+        return null;
     }
 }

@@ -21,6 +21,8 @@ namespace Prism.Map
 
         public byte[,,] Blocs;
 
+        public byte[] FlatBlocs;
+
         public bool shouldUpdate = false;
 
         private void FixedUpdate()
@@ -40,6 +42,12 @@ namespace Prism.Map
 
             _filter = GetComponent<MeshFilter>();
             _collider = GetComponent<MeshCollider>();
+        }
+
+        public Vector3Int GetPosition()
+        {
+            var pos = transform.name.Split('_');
+            return new Vector3Int(int.Parse(pos[0]), int.Parse(pos[1]), int.Parse(pos[2]));
         }
 
         public void SetBloc(int x, int y, int z, byte bloc)
@@ -93,30 +101,41 @@ namespace Prism.Map
             RenderChunk(meshData);
         }
 
-        void RenderChunk(MeshData meshData)
+        public void UpdateChunk(MeshData meshData)
         {
-            if (_filter.mesh != null)
-                _filter.mesh.Clear();
+            RenderChunk(meshData);
+        }
+
+        public void RenderChunk(MeshData meshData, bool uvs = true)
+        {
+            if (meshData == null)
+                return;
+
+            if (_filter.sharedMesh != null)
+                _filter.sharedMesh.Clear();
             else
-                _filter.mesh = new Mesh();
+                _filter.sharedMesh= new Mesh();
 
-            _filter.mesh.vertices = meshData.vertices.ToArray();
-            _filter.mesh.triangles = meshData.triangles.ToArray();
+            _filter.sharedMesh.vertices = meshData.vertices.ToArray();
+            _filter.sharedMesh.triangles = meshData.triangles.ToArray();
 
-            _filter.mesh.uv = meshData.uv.ToArray();
-            _filter.mesh.RecalculateNormals();
+            if(uvs)
+                _filter.sharedMesh.uv = meshData.uv.ToArray();
+
+            _filter.sharedMesh.RecalculateNormals();
 
             //Debug.Log($"Chunk[{gameObject.name}] | Vertices [{_filter.mesh.vertices.Length}] | Triangles [{_filter.mesh.triangles.Length}]");
 
             if (UseRenderForCollision)
             {
                 Mesh mesh = new Mesh();
-                mesh.vertices = _filter.mesh.vertices;
-                mesh.triangles = _filter.mesh.triangles;
+                mesh.vertices = _filter.sharedMesh.vertices;
+                mesh.triangles = _filter.sharedMesh.triangles;
                 mesh.RecalculateNormals();
 
-                _collider.sharedMesh = mesh;
+                //_collider.sharedMesh = mesh;
             }
+            //Debug.Log(_filter.sharedMesh.vertices.Length);
         }
 
         #region MeshAndTextureServices

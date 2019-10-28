@@ -1,0 +1,171 @@
+﻿#pragma kernel CSMain
+
+struct ChunkFace
+{
+	float3 center;
+	int direction;
+	int2 tileUp;
+	int2 tileDown;
+	int2 tileBorders;
+};
+
+struct BlocUVs
+{
+	int2 tileUp;
+	int2 tileDown;
+	int2 tileBorders;
+};
+
+AppendStructuredBuffer<ChunkFace> faces;
+
+RWStructuredBuffer<uint> blocs;
+RWStructuredBuffer<uint> upNeighbor;
+RWStructuredBuffer<uint> downNeighbor;
+RWStructuredBuffer<uint> leftNeighbor;
+RWStructuredBuffer<uint> rightNeighbor;
+RWStructuredBuffer<uint> frontNeighbor;
+RWStructuredBuffer<uint> backNeighbor;
+
+BlocUVs getBlocUVs(uint blocType)
+{
+	BlocUVs uvs;
+
+	switch (blocType)
+	{
+	case 1: // ROCK
+		uvs.tileUp = int2(0, 0);
+		uvs.tileDown = int2(0, 0);
+		uvs.tileBorders = int2(0, 0);
+		break;
+	case 2: // GRASS
+		uvs.tileUp = int2(2, 0);
+		uvs.tileDown = int2(1, 0);
+		uvs.tileBorders = int2(3, 0);
+		break;
+	}
+
+	return uvs;
+}
+
+void AddFace(float3 faceCenter, int faceDirection, uint blocType)
+{
+	ChunkFace face;
+	face.center = faceCenter;
+	face.direction = faceDirection;
+	face.tileUp = getBlocUVs(blocType).tileUp;
+	face.tileDown = getBlocUVs(blocType).tileDown;
+	face.tileBorders = getBlocUVs(blocType).tileBorders;
+
+	faces.Append(face);
+}
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+	/*ChunkFace face;
+	face.center = float3(id.x, id.y, id.z);
+	face.direction = 0;
+	faces.Append(face);*/
+	int x = id.x;
+	int y = id.y;
+	int z = id.z;
+
+	if (blocs[x + y * 32 + z * 32 * 32] != 0)
+	{
+		// Up Face Check
+		if (y + 1 < 32)
+		{
+			if (blocs[x + (y + 1) * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 0, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (upNeighbor[x + 0 * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 0, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+
+		// Down Face Check
+		if (y - 1 >= 0)
+		{
+			if (blocs[x + (y - 1) * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 1, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (downNeighbor[x + 31 * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 1, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+
+		// Left Face Check
+		if (x - 1 >= 0)
+		{
+			if (blocs[(x - 1) + y * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 2, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (leftNeighbor[31 + y * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 2, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+
+		// Right Face Check
+		if (x + 1 < 32)
+		{
+			if (blocs[(x + 1) + y * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 3, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (rightNeighbor[0 + y * 32 + z * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 3, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+
+		// Front Face Check
+		if (z + 1 < 32)
+		{
+			if (blocs[x + y * 32 + (z + 1) * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 4, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (frontNeighbor[x + y * 32 + 0 * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 4, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+
+		// Back Face Check
+		if (z - 1 >= 0)
+		{
+			if (blocs[x + y * 32 + (z - 1) * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 5, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+		else
+		{
+			if (backNeighbor[x + y * 32 + 31 * 32 * 32] == 0)
+			{
+				AddFace(float3(x, y, z), 5, blocs[x + y * 32 + z * 32 * 32]);
+			}
+		}
+	}
+}

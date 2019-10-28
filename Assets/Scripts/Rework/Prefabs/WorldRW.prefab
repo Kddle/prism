@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7054766683907618603
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7054766683907618601}
+  - component: {fileID: 7054766683907618602}
+  m_Layer: 0
+  m_Name: WorldRW
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7054766683907618601
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7054766683907618603}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7054766683907618602
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7054766683907618603}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9626d3b016d63d14889cf76e648d68e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SurfaceNoiseConfiguration: {fileID: 11400000, guid: 9b1e2d9867795c846bbbb85d5f06850c,
+    type: 2}
+  CaveNoiseConfiguration: {fileID: 11400000, guid: ac213443397ee404f870fa8bc138f328,
+    type: 2}
+  ChunkPrefab: {fileID: 713483370680769673, guid: 7035b911ba87e3041b248d183d7758a1,
+    type: 3}
+  ChunkSize: 32
+  MaxHeight: 128
+  HRenderDistance: 1
+  VRenderDistance: 1

@@ -9,11 +9,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b66eda2a4b2e0f438726966da76d852, type: 3}
-  m_Name: WorldConfig1
+  m_Script: {fileID: 11500000, guid: 1226c30e964b6b2488b9d84cafe753cb, type: 3}
+  m_Name: Caves
   m_EditorClassIdentifier: 
-  ChunkSideLength: 32
-  MaxWorldHeight: 32
-  BlocScale: 1
-  HorizontalRenderDistance: 1
-  VerticalRenderDistance: 1
+  octaves: 3
+  noiseType: 1
+  frequency: 0.85
+  frequencyMultiplier: 0.35
+  persistence: 3.5
+  smoothFactor: 0.1
+  amplitude: 1
